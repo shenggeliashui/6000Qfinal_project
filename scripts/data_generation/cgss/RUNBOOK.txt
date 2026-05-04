@@ -1,0 +1,139 @@
+CGSS 数据管线（对齐 README：SubPOP-Train / SubPOP-Eval 式划分）
+============================================================
+
+一、与 README 的对应关系
+------------------------
+- SubPOP-Train：本仓库用 data/cgss-train/ + questions_train + 划分 train_ratio=0.9, val=0.1, test=0
+- SubPOP-Eval：用 data/cgss-eval/ + questions_eval + 划分 train=0, val=0, test=1.0
+- 微观数据仍一份：data/cgss2023/raw/CGSS2023.dta（cgss_config.json 里 microdata_path）
+- 人口学 steering：data/cgss2023/metadata/demographics_cgss.csv + steering_prompts_zh.json（Train/Eval 共用）
+
+二、生成 refined + 分布 CSV
+---------------------------
+在仓库根目录 subpop/ 下：
+
+  python scripts/data_generation/cgss/build_refined_qkey_dict.py --split train --out_dataset cgss-train
+  python scripts/data_generation/cgss/generate_cgss_distribution.py --split train --out_dataset cgss-train
+
+  python scripts/data_generation/cgss/build_refined_qkey_dict.py --split eval --out_dataset cgss-eval
+  python scripts/data_generation/cgss/generate_cgss_distribution.py --split eval --out_dataset cgss-eval
+
+输出：
+  data/cgss-train/processed/cgss-train.csv
+  data/cgss-eval/processed/cgss-eval.csv
+
+三、生成微调用 opnqa_*.csv（prepare_finetuning_data）
+----------------------------------------------------
+以下示例为 Git Bash / Linux / macOS 续行（行尾 `\` 后不要有空格）。Windows CMD 请把 `\` 改成 `^`；也可写成一行。
+
+Train（与 README SubPOP-Train 比例一致）::
+
+  python scripts/data_generation/prepare_finetuning_data.py --dataset cgss-train \
+    --steer_prompts_file_path data/cgss2023/metadata/steering_prompts_zh.json \
+    --steer_demographics_file_path data/cgss2023/metadata/demographics_cgss.csv \
+    --train_ratio 0.9 --val_ratio 0.1 --test_ratio 0 --subgroup_coder identity
+
+Eval（与 README SubPOP-Eval 一致，全部进 test）::
+
+  python scripts/data_generation/prepare_finetuning_data.py --dataset cgss-eval \
+    --steer_prompts_file_path data/cgss2023/metadata/steering_prompts_zh.json \
+    --steer_demographics_file_path data/cgss2023/metadata/demographics_cgss.csv \
+    --train_ratio 0 --val_ratio 0 --test_ratio 1 --subgroup_coder identity
+
+四、拷贝到训练目录（``subpop/train/datasets/cgss-train`` / ``cgss-eval``）
+-----------------------------------------------------------------------
+prepare_finetuning_data.py 先写入 ``data/<dataset>/processed/opnqa_*.csv``。
+微调 ``opnqa_cgss_steering_dataset`` 从包路径读取（仓库根目录为当前工作目录）::
+
+  subpop/train/datasets/{dataset_path}/opnqa_{steering_type}_{train,val,test}.csv
+
+``{dataset_path}`` 与 ``--dataset_path`` 一致（CGSS 用 ``cgss-train`` 或 ``cgss-eval``），通常与第三节 ``--dataset`` 同名。将生成的 CSV 拷入对应子目录，例如（Git Bash / Linux / macOS）::
+
+  mkdir -p subpop/train/datasets/cgss-train subpop/train/datasets/cgss-eval
+  cp -f data/cgss-train/processed/opnqa_*.csv subpop/train/datasets/cgss-train/
+  cp -f data/cgss-eval/processed/opnqa_*.csv subpop/train/datasets/cgss-eval/
+
+说明：
+
+- opnqa_*.csv 含各 SteeringPromptType（如 QA、BIO、PORTRAY、ALL）；微调时与 ``--steering_type`` 一致的那份才会被用到。
+- Windows CMD：``mkdir`` 后 ``copy /Y data\cgss-train\processed\opnqa_*.csv subpop\train\datasets\cgss-train\``（eval 同理）。
+
+五、torchrun 微调（CGSS，可直接改占位符后运行）
+-----------------------------------
+前置条件
+~~~~~~~~
+- 已完成第四节：``subpop/train/datasets/cgss-train/``（或 ``cgss-eval/``，与 ``--dataset_path`` 一致）下存在 ``opnqa_{steering_type}_{train,val,test}.csv``（常用 ``opnqa_QA_*.csv``）。
+- 仓库根目录执行；已 pip install -e .，并安装依赖：
+  全量见 requirements.txt（体积大、pip 解析慢，因含 vllm、unstructured[pdf]、codeshield 等及传递依赖）。
+  仅跑 CGSS 数据 + 微调时可改用 pip install -r requirements-finetune.txt，再 pip install -e .，可明显缩短安装时间。
+- 从 Hugging Face 拉 gated 模型时：``export HF_TOKEN=你的token``；可选 ``export TOKENIZERS_PARALLELISM=true``。
+
+数据路径约定（``subpop/train/configs/datasets.py`` 中 ``opnqa_cgss_steering_dataset``）::
+
+  subpop/train/datasets/{dataset_path}/opnqa_{steering_type}_train.csv
+  subpop/train/datasets/{dataset_path}/opnqa_{steering_type}_val.csv
+  subpop/train/datasets/{dataset_path}/opnqa_{steering_type}_test.csv
+
+与 README 的差异（CGSS 三件套）
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- ``--dataset=opnqa_cgss_steering_dataset``（不要用 ``opnqa_steering_dataset``；后者对应 ``opnqa_500_*`` 文件名）。
+- ``--dataset_path=cgss-train`` 或 ``cgss-eval``（与 ``subpop/train/datasets/`` 下子目录名一致）。
+- ``--steering_type=QA``（或 BIO / PORTRAY / ALL，须与 CSV 文件名一致）。
+
+单卡示例（Git Bash / Linux / macOS，行尾 ``\`` 后勿空格）
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Colab / 单 GPU 请将 ``--nproc_per_node`` 设为 ``1``；多卡按卡数改大。下面为「能跑通」的偏小 batch；请把
+``MODEL_NAME_HERE``、``OUTPUT_DIR_HERE`` 换成你的模型 ID 或本地路径、以及 LoRA 输出目录（建议指向本机或 Drive 持久路径）。
+Qwen2 系列 Base（如 ``Qwen/Qwen2.5-7B``）已支持：将 ``MODEL_NAME_HERE`` 换为该 ID，保持 ``--is_chat=False``。
+
+  export HF_TOKEN="${HF_TOKEN:-}"
+  export TOKENIZERS_PARALLELISM=true
+
+  torchrun --nnodes=1 --nproc_per_node=1 --master_port=29501 \
+    scripts/experiment/run_finetune.py \
+    --enable_fsdp \
+    --low_cpu_fsdp \
+    --fsdp_config.pure_bf16 \
+    --fsdp_config.checkpoint_type=StateDictType.FULL_STATE_DICT \
+    --use_peft=True \
+    --use_fast_kernels \
+    --peft_method=lora \
+    --use_fp16 \
+    --mixed_precision \
+    --batch_size_training=4 \
+    --val_batch_size=4 \
+    --gradient_accumulation_steps=1 \
+    --dist_checkpoint_root_folder=./outputs/fsdp_dist \
+    --dist_checkpoint_folder=fine-tuned \
+    --batching_strategy=padding \
+    --dataset=opnqa_cgss_steering_dataset \
+    --dataset_path=cgss-train \
+    --steering_type=QA \
+    --output_dir=/content/drive/MyDrive/Colab/subpop-cgss-lora \
+    --model_name=Qwen/Qwen2.5-7B \
+    --model_nickname=cgss-lora \
+    --lr=2e-4 \
+    --num_epochs=1 \
+    --max_train_step=200 \
+    --max_eval_step=50 \
+    --weight_decay=0 \
+    --loss_function_type=ce \
+    --which_scheduler=cosine \
+    --warmup_ratio=0.1 \
+    --gamma=0.85 \
+    --attribute=None \
+    --group=None \
+    --lora_config.r=8 \
+    --lora_config.lora_alpha=32 \
+    --is_chat=False \
+    --use_wandb=False \
+    --num_workers_dataloader=0
+
+说明
+~~~~
+- ``--output_dir``：程序会在其后**追加时间戳**子目录再写入 LoRA；父目录需可写。
+- ``--num_epochs`` / ``--max_train_step`` / ``--max_eval_step``：任一为限；试跑可再减小 ``max_train_step``。
+- 显存仍 OOM 时：减小 ``batch_size_training`` / ``val_batch_size``，或换更小模型、开 4bit（需改配置，见 README 量化说明）。
+- 使用 **cgss-eval** 数据时：仅将 ``--dataset_path=cgss-eval``；注意 eval 划分下 train CSV 可能为空，一般 **训练仍用 cgss-train**，eval 集用于论文式评估时再切 ``dataset_path``。
+- 与 README 原文 ``torchrun`` 的更多开关（学习率调度、FSDP 细节等）一致；若 README 写有 ``--checkpoint_type`` 而本仓库实际生效字段为 ``fsdp_config.checkpoint_type``，以**上例中的 fsdp_config 写法**为准。
+- 若启用 W&B：设 ``--use_wandb=True`` 并补 ``--name``、``--wandb_config.project``、``--wandb_config.entity``（见 README）。

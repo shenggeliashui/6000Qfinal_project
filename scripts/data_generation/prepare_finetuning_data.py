@@ -3,8 +3,13 @@ import argparse
 import os
 import pathlib
 import random
+import sys
 from enum import Enum
-from typing import List, Optional
+from typing import Callable, List, Optional, Tuple
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import pandas as pd
 import numpy as np
@@ -13,8 +18,6 @@ from tqdm import tqdm
 from subpop.survey.config import SteeringPromptType
 from subpop.utils.survey_utils import generate_mcq, list_normalize
 from subpop.utils.random_utils import set_random_seed
-
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 
 
 def code_subgroup(attribute: str, subgroup: str) -> str:
@@ -33,6 +36,21 @@ def code_subgroup(attribute: str, subgroup: str) -> str:
     return subgroup_coded
 
 
+def _read_csv_with_encoding(path: pathlib.Path) -> "pd.DataFrame":
+    """Windows 上部分 CSV 为系统默认编码（如 GBK）；统一尝试常见编码。"""
+    path = pathlib.Path(path)
+    last_err: Optional[Exception] = None
+    for enc in ("utf-8", "utf-8-sig", "gbk", "cp936"):
+        try:
+            return pd.read_csv(path, encoding=enc)
+        except UnicodeDecodeError as e:
+            last_err = e
+            continue
+    if last_err:
+        raise last_err
+    return pd.read_csv(path)
+
+
 def prepare_data(
     survey_file_path: pathlib.Path,
     steering_prompts_file_path: pathlib.Path,
@@ -42,7 +60,8 @@ def prepare_data(
     val_ratio: float = 0.1,
     test_ratio: float = 0.0,
     test_wave: Optional[List[int]] = [],
-) -> pd.DataFrame:
+    subgroup_coder: Optional[Callable[[str, str], str]] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Prepare data for training and evaluation of fine-tuned language model.
     Args:
         survey_file_path (pathlib.Path): Path to survey file
@@ -51,8 +70,11 @@ def prepare_data(
         steering_prompt_type (SteeringPromptType): Type of steering prompt
         train, val, test_ratio (float): Ratios for train, validation and test splits
         test_wave (List[int]): List of wave numbers dedicated for test
+        subgroup_coder: Optional callable (attribute, subgroup) -> label used in survey CSV
+            "group" column. Use ``lambda _a, s: s`` (or CLI ``--subgroup_coder identity``) when
+            labels already match (e.g. CGSS Chinese metadata).
     Returns:
-        pd.DataFrame: Dataframe containing input prompts, output tokens and output distribution
+        Tuple of train, val, test DataFrames with input prompts, output tokens and output distribution
     Note:
         output_dist does not contain refusal option, instead saving normalized distribution without refusal option
     """
@@ -60,9 +82,14 @@ def prepare_data(
     assert train_ratio >= 0 and val_ratio >= 0 and test_ratio >= 0, "Ratios should be non-negative."
     assert sum([train_ratio, val_ratio, test_ratio]) == 1, "Ratios should sum up to 1."
 
-    full_survey_df: pd.DataFrame = pd.read_csv(survey_file_path)
-    steering_prompts_df: pd.DataFrame = pd.read_json(steering_prompts_file_path)
-    steering_demographics_df: pd.DataFrame = pd.read_csv(steering_demographics_file_path)
+    def _resolve_subgroup(attribute: str, subgroup: str) -> str:
+        if subgroup_coder is not None:
+            return subgroup_coder(attribute, subgroup)
+        return code_subgroup(attribute, subgroup)
+
+    full_survey_df: pd.DataFrame = _read_csv_with_encoding(survey_file_path)
+    steering_prompts_df: pd.DataFrame = pd.read_json(steering_prompts_file_path, encoding="utf-8")
+    steering_demographics_df: pd.DataFrame = _read_csv_with_encoding(steering_demographics_file_path)
 
     full_survey_df["responses"] = full_survey_df["responses"].apply(ast.literal_eval)
     full_survey_df["ordinal"] = full_survey_df["ordinal"].apply(ast.literal_eval)
@@ -101,7 +128,7 @@ def prepare_data(
     for _, subgroup_row in tqdm(steering_demographics_df.iterrows()):
         attribute: str = subgroup_row["attribute"]
         subgroup: str = subgroup_row["group"]
-        subgroup_coded = code_subgroup(attribute, subgroup)
+        subgroup_coded = _resolve_subgroup(attribute, subgroup)
 
         for i, survey_df in enumerate([train_survey_df, val_survey_df, test_survey_df]):
             survey_subgroup_df: pd.DataFrame = survey_df[
@@ -244,6 +271,14 @@ def get_args_datagen():
         action="store_true",
         help="Flag to not shuffle data. Used when wants to keep the order of data."
     )
+    parser.add_argument(
+        "--subgroup_coder",
+        type=str,
+        default="default",
+        choices=["default", "identity"],
+        help="identity: use demographics subgroup label as-is in CSV (e.g. CGSS Chinese labels). "
+        "default: use built-in code_subgroup mapping for SubPOP US labels.",
+    )
     return parser.parse_args()
 
 
@@ -269,7 +304,11 @@ if __name__ == "__main__":
 
     if not pathlib.Path(output_dir).exists():
         os.makedirs(output_dir)
-    
+
+    subgroup_coder_fn = None
+    if args.subgroup_coder == "identity":
+        subgroup_coder_fn = lambda _a, s: s
+
     """For each steering prompt type, generate a train / validation / test split."""
     for steer_type in SteeringPromptType:
         set_random_seed(seed) # set the same seed for each steering prompt type.
@@ -282,11 +321,24 @@ if __name__ == "__main__":
             val_ratio=val_ratio,
             test_ratio=test_ratio,
             test_wave=test_wave,
+            subgroup_coder=subgroup_coder_fn,
         )
+        # test_ratio=0 等情况下 test_df 可能无列，to_csv 会得到无法被 pandas/datasets 读取的空文件
+        if len(train_df.columns) > 0:
+            if len(val_df.columns) == 0:
+                val_df = train_df.iloc[0:0].copy()
+            if len(test_df.columns) == 0:
+                test_df = train_df.iloc[0:0].copy()
         if not no_shuffle:
             train_df = train_df.sample(frac=1, random_state=seed).reset_index(drop=True)
             val_df = val_df.sample(frac=1, random_state=seed).reset_index(drop=True)
             test_df = test_df.sample(frac=1, random_state=seed).reset_index(drop=True)
-        train_df.to_csv(os.path.join(output_dir, f"opnqa_{steer_type.name}_train.csv"),index=False)
-        val_df.to_csv(os.path.join(output_dir, f"opnqa_{steer_type.name}_val.csv"),index=False)
-        test_df.to_csv(os.path.join(output_dir, f"opnqa_{steer_type.name}_test.csv"),index=False)
+        train_df.to_csv(
+            os.path.join(output_dir, f"opnqa_{steer_type.name}_train.csv"), index=False, encoding="utf-8"
+        )
+        val_df.to_csv(
+            os.path.join(output_dir, f"opnqa_{steer_type.name}_val.csv"), index=False, encoding="utf-8"
+        )
+        test_df.to_csv(
+            os.path.join(output_dir, f"opnqa_{steer_type.name}_test.csv"), index=False, encoding="utf-8"
+        )

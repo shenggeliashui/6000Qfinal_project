@@ -6,6 +6,7 @@ import functools
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from transformers.models.mistral.modeling_mistral import MistralDecoderLayer
 from transformers.models.mllama.modeling_mllama import   MllamaSelfAttentionDecoderLayer,MllamaCrossAttentionDecoderLayer,MllamaVisionEncoderLayer
+from transformers.models.qwen2.modeling_qwen2 import Qwen2DecoderLayer
 
 from torch.distributed.fsdp.wrap import (
     transformer_auto_wrap_policy,
@@ -33,7 +34,8 @@ def get_llama_wrapper():
             MllamaSelfAttentionDecoderLayer,
             MllamaVisionEncoderLayer,
             MllamaCrossAttentionDecoderLayer,
-            MistralDecoderLayer # Original llama-recipes does not support mistral, so included custom.
+            MistralDecoderLayer, # Original llama-recipes does not support mistral, so included custom.
+            Qwen2DecoderLayer,
         ])
     )
 

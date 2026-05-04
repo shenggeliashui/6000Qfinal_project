@@ -1,0 +1,25 @@
+# 仅覆盖 `run_finetune` / `subpop.train.finetuning` 微调链路（LoRA/FSDP、OpinionQA 等 HF datasets）。
+# 不含 CGSS 读 .dta（无 pyreadstat）、不含数据生成/评估脚本里的 sklearn/scipy/tabulate 等。
+# 用法：pip install -r requirements-finetune.txt && pip install -e .
+# Colab 若已预装 torch，可能与下面 torch 版本冲突；请按需统一 torch 后再装其余项。
+# 可选依赖见文件末尾注释（wandb、matplotlib）。
+
+torch==2.5.1
+transformers==4.48.2
+accelerate>=0.34.0,<1.0
+peft>=0.13.0,<0.16
+bitsandbytes>=0.43.0
+datasets>=2.16.0
+pandas>=2.2.0,<3
+fire
+pyyaml>=6.0.1
+tqdm
+sentencepiece
+tiktoken>=0.7.0
+typing-extensions>=4.8.0
+
+# 可选：train_config.use_wandb=True 时再装
+# wandb>=0.16.0
+
+# 可选：绘制训练曲线（subpop/train/utils/plot_metrics.py）
+# matplotlib>=3.8.0

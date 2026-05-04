@@ -136,7 +136,7 @@ python scripts/data_generation/prepare_finetuning_data.py
 
 Running the script with a specified dataset name will result in fine-tuning data
 located at `data/{DATASET_NAME}/processed/opnqa_{QA,BIO,PORTRAY,ALL}_{train,val,test}.csv`.
-You can transfer the generated files `data/subpop-train/processed/opnqa_QA_{train,val,test}.csv` to `train/datasets/subpop-train` directory and move on to the next step.
+For `opnqa_cgss_steering_dataset`, copy those CSVs under `subpop/train/datasets/{dataset_path}/` (e.g. `cgss-train`, `cgss-eval`) so paths match `dataset_path` used at fine-tuning time.
 
 ---
 

@@ -31,6 +31,7 @@ from transformers import (
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from transformers.models.mistral.modeling_mistral import MistralDecoderLayer # mistral support (custom)
 from transformers.models.mllama.modeling_mllama import  MllamaSelfAttentionDecoderLayer,MllamaCrossAttentionDecoderLayer,MllamaVisionEncoderLayer
+from transformers.models.qwen2.modeling_qwen2 import Qwen2DecoderLayer, Qwen2ForCausalLM
 
 from subpop.train.configs import fsdp_config as FSDP_CONFIG
 from subpop.train.configs import train_config as TRAIN_CONFIG
@@ -228,8 +229,37 @@ def main(**kwargs):
                 device_map="auto" if train_config.quantization and not train_config.enable_fsdp else None,
                 torch_dtype=torch.float16 if train_config.use_fp16 else torch.bfloat16,
             )
+    elif config.model_type == "qwen2":
+        is_vision = False
+        if train_config.enable_fsdp and train_config.low_cpu_fsdp:
+            if rank == 0:
+                model = Qwen2ForCausalLM.from_pretrained(
+                    train_config.model_name,
+                    quantization_config=bnb_config,
+                    use_cache=use_cache,
+                    attn_implementation="sdpa" if train_config.use_fast_kernels else None,
+                    device_map="auto" if train_config.quantization and not train_config.enable_fsdp else None,
+                    torch_dtype=torch.float16 if train_config.use_fp16 else torch.bfloat16,
+                )
+            else:
+                qwen_config = AutoConfig.from_pretrained(train_config.model_name)
+                qwen_config.use_cache = use_cache
+                with torch.device("meta"):
+                    model = Qwen2ForCausalLM(qwen_config)
+        else:
+            model = Qwen2ForCausalLM.from_pretrained(
+                train_config.model_name,
+                quantization_config=bnb_config,
+                use_cache=use_cache,
+                attn_implementation="sdpa" if train_config.use_fast_kernels else None,
+                device_map="auto" if train_config.quantization and not train_config.enable_fsdp else None,
+                torch_dtype=torch.float16 if train_config.use_fp16 else torch.bfloat16,
+            )
     else:
-        raise ValueError(f"Model type {config.model_type} is not supported. Please use llama or mllama model.")
+        raise ValueError(
+            f"Model type {config.model_type} is not supported. "
+            "Supported: llama, mistral, mllama, qwen2."
+        )
     # Load the tokenizer and add special tokens
     tokenizer = AutoTokenizer.from_pretrained(train_config.model_name if train_config.tokenizer_name is None else train_config.tokenizer_name)
     if not tokenizer.pad_token_id: 
@@ -284,6 +314,8 @@ def main(**kwargs):
         # Create the FSDP wrapper for LlamaDecoderLayer in text models
             if config.model_type == "mistral": # mistral support (custom)
                 my_auto_wrapping_policy = fsdp_auto_wrap_policy(model, [MistralDecoderLayer])
+            elif config.model_type == "qwen2":
+                my_auto_wrapping_policy = fsdp_auto_wrap_policy(model, [Qwen2DecoderLayer])
             else:
                 my_auto_wrapping_policy = fsdp_auto_wrap_policy(model, [LlamaDecoderLayer])
         device_id = 0
@@ -337,13 +369,17 @@ def main(**kwargs):
     )
     print(f"--> Validation Set Length = {len(dataset_val)}")
 
-    dataset_test = get_preprocessed_dataset(
-        dataset_processer,
-        dataset_config,
-        split="test",
-        chat_template=train_config.is_chat,
-    )
-    print(f"--> Test Set Length = {len(dataset_test)}")
+    dataset_test = None
+    if train_config.run_test:
+        dataset_test = get_preprocessed_dataset(
+            dataset_processer,
+            dataset_config,
+            split="test",
+            chat_template=train_config.is_chat,
+        )
+        print(f"--> Test Set Length = {len(dataset_test)}")
+    else:
+        print("--> Skipping test set load (run_test=False); empty test CSV is OK")
 
     if not train_config.enable_fsdp or rank == 0:
         print(f"--> Validation Set Length = {len(dataset_val)}")
@@ -477,16 +513,19 @@ def main(**kwargs):
         checkpoint_path = os.path.dirname(train_config.output_dir)
         checkpoint_path = os.path.join(checkpoint_path, "peft_checkpointing")
         if os.path.exists(checkpoint_path):
+            scaler_ckpt = os.path.join(checkpoint_path, "grad_scaler.pt")
             if (
                 os.path.exists(os.path.join(checkpoint_path, "optimizer.pt"))
                 and os.path.exists(os.path.join(checkpoint_path, "scheduler.pt"))
-                and os.path.exists(os.path.join(checkpoint_path, "grad_scaler.pt"))
                 and os.path.exists(os.path.join(checkpoint_path, "metadata.json"))
             ):
                 optimizer.load_state_dict(torch.load(os.path.join(checkpoint_path, "optimizer.pt")))
                 scheduler.load_state_dict(torch.load(os.path.join(checkpoint_path, "scheduler.pt")))
-                scaler_dict = torch.load(os.path.join(checkpoint_path, "grad_scaler.pt"))
-                print("Loaded optimizer, scheduler and scaler from checkpoint")
+                if os.path.exists(scaler_ckpt):
+                    scaler_dict = torch.load(scaler_ckpt)
+                    print("Loaded optimizer, scheduler and scaler from checkpoint")
+                else:
+                    print("Loaded optimizer and scheduler from checkpoint (no grad_scaler.pt; fp16/bf16 as in this run)")
                 with open(os.path.join(checkpoint_path, "metadata.json"), "r") as f:
                     metadata = json.load(f)
                     starting_epoch = metadata["epoch"]

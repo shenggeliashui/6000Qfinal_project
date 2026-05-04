@@ -9,13 +9,14 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     apply_activation_checkpointing,
 )
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+from transformers.models.qwen2.modeling_qwen2 import Qwen2DecoderLayer
 
 non_reentrant_wrapper = partial(
     checkpoint_wrapper,
     checkpoint_impl=CheckpointImpl.NO_REENTRANT,
 )
 
-check_fn = lambda submodule: isinstance(submodule, LlamaDecoderLayer)
+check_fn = lambda submodule: isinstance(submodule, (LlamaDecoderLayer, Qwen2DecoderLayer))
 
 
 def apply_fsdp_checkpointing(model):

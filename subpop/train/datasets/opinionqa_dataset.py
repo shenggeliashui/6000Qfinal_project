@@ -9,16 +9,29 @@ from multiprocessing import Lock
 import datasets
 import pandas as pd
 
+from subpop.train.mcq_option_limit import MAX_MCQ_OPTIONS
+
+
+def _bos_prefix(tokenizer) -> str:
+    """Qwen/Llama3 等 tokenizer 常将 bos_token 置为 None，不可与 str 直接拼接。"""
+    t = getattr(tokenizer, "bos_token", None)
+    return t if isinstance(t, str) and t else ""
+
+
+def _eos_suffix(tokenizer) -> str:
+    t = getattr(tokenizer, "eos_token", None)
+    return t if isinstance(t, str) and t else ""
+
 
 def get_preprocessed_opinionqa(dataset_config, tokenizer, split, save = True, debug = False):
 
     def tokenize_add_label(sample):
         prompt = tokenizer.encode(
-            tokenizer.bos_token + sample["input_prompt"],
+            _bos_prefix(tokenizer) + sample["input_prompt"],
             add_special_tokens=False
         )
         answer = tokenizer.encode(
-            sample["output_prompt"].strip() + tokenizer.eos_token,
+            sample["output_prompt"].strip() + _eos_suffix(tokenizer),
             add_special_tokens=False
         ) # detail: adding strip(), because " A" is tokenized as ['<s>', '', ' A']
           # i.e., the whitespace is automatically included in the token list..
@@ -60,22 +73,28 @@ def get_preprocessed_opinionqa_ce_or_wd_loss(
 ):
 
     def tokenize_add_label(sample):
-        
-        padding_value = 10
         resp_dist = ast.literal_eval(sample["output_dist"])
-        resp_dist = resp_dist + [0] * (padding_value - len(resp_dist)) # making resp_dist of same length
+        if len(resp_dist) > MAX_MCQ_OPTIONS:
+            resp_dist = resp_dist[:MAX_MCQ_OPTIONS]
+            s = sum(resp_dist)
+            if s > 0:
+                resp_dist = [x / s for x in resp_dist]
+        resp_dist = resp_dist + [0] * (MAX_MCQ_OPTIONS - len(resp_dist))
         ordinal_info = sample.get("ordinal", None)
         if ordinal_info is not None:
             ordinal_info = ast.literal_eval(ordinal_info)
-            ordinal_info = ordinal_info + [max(ordinal_info)] * (padding_value - len(ordinal_info))
+            if len(ordinal_info) > MAX_MCQ_OPTIONS:
+                ordinal_info = ordinal_info[:MAX_MCQ_OPTIONS]
+            pad_ord = max(ordinal_info) if ordinal_info else 0
+            ordinal_info = ordinal_info + [pad_ord] * (MAX_MCQ_OPTIONS - len(ordinal_info))
 
         if not chat_template: # using pretrained base model
             prompt = tokenizer.encode(
-                tokenizer.bos_token + sample["input_prompt"],
+                _bos_prefix(tokenizer) + sample["input_prompt"],
                 add_special_tokens=False
             )
             answer = tokenizer.encode(
-                "Answer: A" + tokenizer.eos_token, # "A" is just a placeholder
+                "Answer: A" + _eos_suffix(tokenizer), # "A" is just a placeholder
                 add_special_tokens=False
             )[-2:] # [-2:] indicates the option and the eos_token
 
@@ -102,7 +121,7 @@ def get_preprocessed_opinionqa_ce_or_wd_loss(
                 add_generation_prompt = True
             )
             answer = tokenizer.encode(
-                "Answer: A" + tokenizer.eos_token,
+                "Answer: A" + _eos_suffix(tokenizer),
                 add_special_tokens=False
             )[-2:]
                      

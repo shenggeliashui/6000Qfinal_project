@@ -1,0 +1,166 @@
+{
+  "microdata_path": "data/cgss2023/raw/CGSS2023.dta",
+  "weight_column": "weight2",
+  "global_invalid_codes": [-8, -7, -5, -4, -1, 0],
+  "global_refusal_codes": [-3, 98, 99],
+  "subpopulations": [
+    {
+      "attribute": "性别",
+      "column": "a2",
+      "value_map": { "男": [1], "女": [2] }
+    },
+    {
+      "attribute": "受教育程度",
+      "column": "a7a",
+      "value_map": {
+        "初中及以下": [1, 2, 3, 4],
+        "高中（含中专/技校）": [5, 6, 7, 8],
+        "大专及以上": [9, 10, 11, 12, 13, 14]
+      }
+    },
+    {
+      "attribute": "户口类型",
+      "column": "a18",
+      "value_map": {
+        "农业户口": [1],
+        "非农业及居民户口": [2, 3, 4, 5, 6, 7]
+      }
+    },
+    {
+      "attribute": "村居类型",
+      "column": "isurban",
+      "value_map": {
+        "居委会（城市型）": [1],
+        "村委会（农村型）": [2]
+      }
+    },
+    {
+      "attribute": "政治面貌",
+      "column": "a10",
+      "value_map": {
+        "群众": [1],
+        "共青团员": [2],
+        "中共党员或其它党派": [3, 4]
+      }
+    },
+    {
+      "attribute": "民族",
+      "column": "a4",
+      "value_map": {
+        "汉族": [1],
+        "少数民族": [2, 3, 4, 5, 6, 7, 8]
+      }
+    },
+    {
+      "attribute": "宗教信仰",
+      "column": "a5",
+      "value_map": {
+        "不信仰宗教": [1],
+        "有宗教信仰": [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+      }
+    },
+    {
+      "attribute": "婚姻状况",
+      "column": "a69",
+      "value_map": {
+        "未婚或同居": [1, 2],
+        "有配偶": [3, 4],
+        "分居离异或丧偶": [5, 6, 7]
+      }
+    },
+    {
+      "attribute": "自评健康状况",
+      "column": "a15",
+      "value_map": {
+        "不健康": [1, 2],
+        "一般": [3],
+        "健康": [4, 5]
+      }
+    },
+    {
+      "attribute": "居住地类型",
+      "column": "a25a",
+      "value_map": {
+        "中心城区": [1],
+        "城乡结合部": [2],
+        "镇": [3],
+        "农村": [4]
+      }
+    }
+  ],
+  "questions_train": [
+    { "var": "a36", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a35", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a33", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a38", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a39", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a40", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a41", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a421", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a422", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a423", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a424", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a425", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a34", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a44", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a17", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a32", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a20", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a6", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a43a", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a43b", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a43c", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a43d", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a54", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a58", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "b8", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "b9", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c3", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c5", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a31b", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a82", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a77", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a74", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c11a", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c11b", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c11c", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c11d", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a3002", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a3003", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a3004", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a3005", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a282", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a283", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a284", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a285", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a16", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a89f", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a89g", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "b17", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c12a", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c12b", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c12c", "invalid_codes": [], "refusal_codes": null, "question_text": null }
+  ],
+  "questions_eval": [
+    { "var": "a31a", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a311", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a312", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a313", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a43e", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a3001", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a29", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a281", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a87", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a88", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c11e", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c11f", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a59a", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "a60a", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c18", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "b16new", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "b19c", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c15a", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c15b", "invalid_codes": [], "refusal_codes": null, "question_text": null },
+    { "var": "c15c", "invalid_codes": [], "refusal_codes": null, "question_text": null }
+  ]
+}

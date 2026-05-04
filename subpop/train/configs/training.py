@@ -55,7 +55,7 @@ class train_config:
     use_profiler: bool = False # Enable pytorch profiler, can not be used with flop counter at the same time.
     profiler_dir: str = "PATH/to/save/profiler/results" # will be used if using profiler
     loss_function_type: str = "ce" # ce, wd. Determines the loss function to be used for training.
-    dataset_path: str = "subpop-train" # path to the dataset
+    dataset_path: str = "cgss-train"  # subpop/train/datasets/<this>/（CGSS 常用 cgss-train / cgss-eval）
     steering_type: str = "QA" # QA, BIO, PORTRAY: steering type for the input prompt. By default, QA
     attribute: str = "None" # only used when the finetuning is on a single subpopulation data
     group: str = "None" # only used when the finetuning is on a single subpopulation data

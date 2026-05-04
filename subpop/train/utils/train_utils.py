@@ -31,6 +31,7 @@ from subpop.train.policies import fpSixteen,bfSixteen, get_llama_wrapper
 from subpop.train.utils.memory_utils import MemoryTrace
 from accelerate.utils import is_xpu_available, is_ccl_available
 from subpop.train.utils.flop_utils import FlopMeasure
+from subpop.train.mcq_option_limit import MAX_MCQ_OPTIONS
 
 
 def set_tokenizer_params(tokenizer): # mistral support (custom)
@@ -180,26 +181,27 @@ def train(
 
     Returns: results dictionary containing average training and validation perplexity and loss
     """
-    # Create a gradient scaler for fp16
+    # Gradient scaler only for fp16; bf16/fp32 keep scaler=None (save_peft_checkpoint_checkpointing skips it)
+    scaler = None
     if train_config.use_fp16 and train_config.enable_fsdp:
         scaler = ShardedGradScaler()
     elif train_config.use_fp16 and not train_config.enable_fsdp:
         scaler = torch.cuda.amp.GradScaler()
-    if scaler_dict is not None:
+    if scaler_dict is not None and scaler is not None:
         scaler.load_state_dict(scaler_dict)
     if train_config.enable_fsdp:
         world_size = int(os.environ["WORLD_SIZE"])
 
     autocast = torch.cuda.amp.autocast if train_config.use_fp16 else nullcontext
 
-    label_to_token_id = [] # convert ' A', ' B', ... to token ids
-    for chr_idx in range(10):
+    label_to_token_id = []  # convert ' A'..' Z' to token ids; length must match padded response_distribution
+    for chr_idx in range(MAX_MCQ_OPTIONS):
         label_to_token_id.append(
             tokenizer.encode(
                 " " + chr(ord('A') + chr_idx),
                 add_special_tokens=False
             )[-1]
-        ) # calculation of token_id for ' A', ... for the given tokenizer
+        )  # calculation of token_id for ' A', ... for the given tokenizer
 
     if train_config.save_metrics:
         if not os.path.exists(train_config.output_dir):
@@ -523,8 +525,8 @@ def evaluation(model,train_config, eval_dataloader, local_rank, tokenizer, wandb
     eval_preds = []
     val_step_loss = []
     val_step_perplexity = []
-    label_to_token_id = [] # calculation of token_id for ' A', ... for the given tokenizer
-    for chr_idx in range(10):
+    label_to_token_id = []  # must match MAX_MCQ_OPTIONS in opinionqa_dataset / mcq_option_limit
+    for chr_idx in range(MAX_MCQ_OPTIONS):
         label_to_token_id.append(
             tokenizer.encode(
                 " " + chr(ord('A') + chr_idx),
