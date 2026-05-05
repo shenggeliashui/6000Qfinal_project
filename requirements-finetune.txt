@@ -1,13 +1,26 @@
 # 仅覆盖 `run_finetune` / `subpop.train.finetuning` 微调链路（LoRA/FSDP、OpinionQA 等 HF datasets）。
 # 不含 CGSS 读 .dta（无 pyreadstat）、不含数据生成/评估脚本里的 sklearn/scipy/tabulate 等。
 # 用法：pip install -r requirements-finetune.txt && pip install -e .
-# Colab 若已预装 torch，可能与下面 torch 版本冲突；请按需统一 torch 后再装其余项。
+#
+# --- Colab / CUDA 12.4（与你在 notebook 里的安装顺序对齐）---
+# 若与预装 transformers / sentence-transformers 冲突，可先：
+#   pip uninstall sentence-transformers transformers -y
+# PyTorch 官方 cu124 轮子（任选其一）：
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# 或与下面固定版本一致：
+#   pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+# 再装其余依赖：
+#   pip install -r requirements-finetune.txt
+# CPU 或已手动装好 torch 时，可直接 pip install -r requirements-finetune.txt（注意与下方 torch 版本一致）。
 # 可选依赖见文件末尾注释（wandb、matplotlib）。
 
 torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
 transformers==4.48.2
-accelerate>=0.34.0,<1.0
-peft>=0.13.0,<0.16
+# transformers 4.48：`device_map` / `low_cpu_mem_usage` 需 accelerate>=0.26（与 eval_peft_test_hf 里 device_map=auto 一致）；0.24 会触发 ImportError
+accelerate>=0.26.0,<1.0
+peft==0.6.2
 bitsandbytes>=0.43.0
 datasets>=2.16.0
 pandas>=2.2.0,<3

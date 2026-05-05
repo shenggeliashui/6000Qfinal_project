@@ -2,20 +2,21 @@
 """
 Colab / 本机：用 Transformers + PEFT 在测试 CSV 上算与训练一致的 KL（ce）或 WD（wd），无需 vLLM。
 
-仓库根目录（含 pyproject 的 subpop/）下执行，且已 pip install -e .：
+仓库根目录（含 pyproject 的 subpop/）下执行，且已 pip install -e .。
+独立测试集优先用 cgss-eval（见 RUNBOOK 第六节）；cgss-train 的 test 在 test_ratio=0 时可能为空。
 
   # 微调后（LoRA）
   python scripts/experiment/eval_peft_test_hf.py \\
     --model_name=Qwen/Qwen2.5-0.5B \\
     --lora_path=./test20260504_xxxx \\
-    --test_csv=subpop/train/datasets/cgss-train/opnqa_QA_test.csv \\
+    --test_csv=subpop/train/datasets/cgss-eval/opnqa_QA_test.csv \\
     --output_csv=./eval_ft.csv
 
   # 基线：同一基座、不加载 LoRA（与微调对比用）
   python scripts/experiment/eval_peft_test_hf.py \\
     --model_name=Qwen/Qwen2.5-0.5B \\
     --no_peft=True \\
-    --test_csv=subpop/train/datasets/cgss-train/opnqa_QA_test.csv \\
+    --test_csv=subpop/train/datasets/cgss-eval/opnqa_QA_test.csv \\
     --output_csv=./eval_baseline.csv
 """
 from __future__ import annotations
