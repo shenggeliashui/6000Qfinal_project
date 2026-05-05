@@ -383,3 +383,62 @@ os.chdir("/content/drive/MyDrive/6000Q")  # 改成你的路径
 `--from_peft_checkpoint=./test20260504_162916`  
 （路径换成你机器上的实际目录）。
 
+---
+
+## 八、WD 上下界（论文 4.1 风格）与仓库现状
+
+### 8.1 原有代码里有什么
+
+- **训练 / 评估**：`subpop/train/utils/train_utils.py` 与 `eval_peft_test_hf.py` 使用 **`ordinal_emd`**（与 `subpop/utils/survey_utils.py` 同一思想）计算 **模型预测分布 vs 标注 `output_dist`** 的 WD。
+- **此前没有**：单独脚本计算「**均匀 vs 标注**」的 **上界**，或「**人群子样本之间**」的 **下界**；论文 4.1 这两段需要额外实现或在微观数据上抽样。
+
+### 8.2 新增脚本：`scripts/experiment/compute_wd_bounds.py`
+
+在 **与评测相同的 `opnqa_*.csv`**（含 `output_dist`、`ordinal`）上估计两条参照曲线：
+
+| 量 | 做法（与脚本一致） |
+|----|---------------------|
+| **上界（uniform）** | 在合法选项（`ordinal >= 0`）上取 **均匀分布**，与该行 **标注分布** 算 `ordinal_emd` → **无知基线**的 WD。 |
+| **下界（bootstrap）** | 仅有聚合表时：把 `output_dist` 当作总体比例 **p**，重复抽取两次独立 **`Multinomial(n, p)`**，用两组计数归一化后的分布算 WD，对 bootstrap **取平均** → 近似 **有限样本波动**带来的 WD 量级（与论文「两组受访者」在**无微观个体数据**时常用的蒙特卡洛类比；**不是**原始问卷逐人拆半的严格复现）。 |
+
+**推荐参数**：`n_per_side` 与论文/bootstrap 设定对齐（例如几百）；`n_bootstrap` 越大越稳、越慢。默认对 **`(qkey, attribute, group)` 去重**，避免同一调查格点在 QA/BIO/PORTRAY 多份 prompt 行上重复计数。
+
+```bash
+python scripts/experiment/compute_wd_bounds.py \
+  --csv=subpop/train/datasets/cgss-eval/opnqa_QA_test.csv \
+  --n_per_side=500 \
+  --n_bootstrap=500 \
+  --seed=42 \
+  --dedupe \
+  --out_csv=./wd_bounds_per_row.csv
+```
+
+Colab：
+
+```python
+!python scripts/experiment/compute_wd_bounds.py \
+  --csv=subpop/train/datasets/cgss-eval/opnqa_QA_test.csv \
+  --n_per_side=500 \
+  --n_bootstrap=500 \
+  --seed=42 \
+  --dedupe \
+  --out_csv=./wd_bounds_per_row.csv
+```
+
+### 8.3 与模型评估 WD 对照
+
+1. 跑 **第六节** `eval_peft_test_hf.py`，得到逐行 **`wd`**（`eval_baseline.csv` / `eval_ft.csv`）。
+2. 跑本节脚本得到 **`wd_upper_uniform`** / **`wd_lower_bootstrap_mean`**（可与 `qkey` 等合并）。
+3. **解读**：在相同 **ordinal / WD 定义**下，通常希望 **模型 WD** 明显 **低于上界**；是否接近 **下界** 取决于任务难度与上面 bootstrap 的假设。**若持有受访者微观数据**，应在数据管线中按论文对受访者分组再聚合，再算 WD；本脚本的 bootstrap 仅服务「只有聚合 `output_dist`」的场景。
+
+**可选合并示例**（需 `pandas`）：`eval_ft.csv` **无 `qkey`**，须保证 **与 bounds 使用同一 `test_csv`**、同一顺序（全表 `max_rows=0`）。若用了 `compute_wd_bounds.py` 的 **`--dedupe`**，行数可能与逐行 `eval` 不一致，此时应按 ``qkey``（及 ``attribute`` / ``group``）做 merge，而不是按行号硬拼。
+
+```python
+import pandas as pd
+
+b = pd.read_csv("wd_bounds_per_row.csv")
+e = pd.read_csv("eval_ft.csv")  # 列: kl, wd, loss_used；需另有关联表才能 join qkey
+# 若 eval 与 bounds 均为同一 test_csv 全表、且均未 dedupe，行数一致时可临时：
+# combo = pd.concat([b.reset_index(drop=True), e.add_prefix("eval_")], axis=1)
+```
+
