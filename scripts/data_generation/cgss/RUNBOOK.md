@@ -283,6 +283,44 @@ plt.show()
 print("mean KL baseline", b["kl"].mean(), "mean KL ft", f["kl"].mean())
 ```
 
+### 6.6 随机样例：微调模型在测试集上长什么样
+
+从 **`cgss-eval`** 的测试 CSV（如 `opnqa_QA_test.csv`）中**随机抽**若干行，打印：`qkey`、截断后的 `input_prompt`、**标注分布** `output_dist` 的 Top-k、**模型在选项 A–Z 上归一化概率**的 Top-k（与 `eval_peft_test_hf.py` 同一套打分，便于对照 KL/WD）。
+
+仓库脚本（需在**仓库根**且已 `pip install -e .`）：
+
+```text
+scripts/experiment/show_peft_examples.py
+```
+
+**Colab：先进入含 `scripts/` 的仓库根**（若用 Drive，路径按你实际改）：
+
+```python
+# 1) 工作目录：含 scripts/ 与 subpop/ 包
+import os
+os.chdir("/content/drive/MyDrive/6000Q")  # 改成你的路径
+```
+
+```python
+# 2) 展示 5 条随机测试样本（与训练时 steering 一致：QA 用 opnqa_QA_test）
+!python scripts/experiment/show_peft_examples.py \
+  --model_name=Qwen/Qwen2.5-0.5B \
+  --lora_path=./test20260504_xxxxxx \
+  --test_csv=subpop/train/datasets/cgss-eval/opnqa_QA_test.csv \
+  --is_chat=False \
+  --n_examples=5 \
+  --seed=42 \
+  --topk=5 \
+  --max_prompt_chars=800
+```
+
+说明：
+
+- 将 `--lora_path` 换成日志里 **`PEFT modules are saved in ...`** 对应目录（含 `adapter_config.json`）。
+- **`--test_csv`**：与评估/`steering_type` 一致（QA → `opnqa_QA_test.csv`，其它同理）。
+- **`--seed`**：固定随机抽样；换种子可看不同题。
+- 首次跑会构建缓存 `*_preprocessed.json`，可能较慢；之后同路径会快一些。
+
 **其它基线**：同一 CSV 上比较均匀分布、或论文/助教给定数字（均匀对照需自行实现，或与 README 公开 checkpoint 对齐）。
 
 ---
