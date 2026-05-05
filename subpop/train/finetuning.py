@@ -278,16 +278,24 @@ def main(**kwargs):
         model.to(torch.bfloat16)
         
     if train_config.use_peft:
-        # Load the pre-trained peft model checkpoint and setup its configuration
-        # if train_config.from_peft_checkpoint:
-        #     model = PeftModel.from_pretrained(model, train_config.from_peft_checkpoint, is_trainable=True)
-        #     peft_config = model.peft_config['default']
-        checkpoint_path = os.path.dirname(train_config.output_dir)
-        checkpoint_path = os.path.join(checkpoint_path, "peft_checkpointing")
-        if os.path.exists(checkpoint_path):
-            model = PeftModel.from_pretrained(model, checkpoint_path, is_trainable=True)
-            peft_config = model.peft_config['default']
-        else: # Generate the peft config and start fine-tuning from original model 
+        # Adapter load order: explicit from_peft_checkpoint > auto peft_checkpointing > new LoRA
+        checkpoint_parent = os.path.dirname(train_config.output_dir)
+        resume_dir = os.path.join(checkpoint_parent, "peft_checkpointing")
+        fpc = (getattr(train_config, "from_peft_checkpoint", None) or "").strip()
+        if fpc:
+            if not os.path.isdir(fpc):
+                raise FileNotFoundError(
+                    f"from_peft_checkpoint is not a directory: {fpc}\n"
+                    "Pass the LoRA folder that contains adapter_config.json (e.g. the timestamped --output_dir path)."
+                )
+            model = PeftModel.from_pretrained(model, fpc, is_trainable=True)
+            peft_config = model.peft_config["default"]
+            print(f"--> Loaded PEFT adapter weights from --from_peft_checkpoint={fpc!r}")
+        elif os.path.exists(resume_dir):
+            model = PeftModel.from_pretrained(model, resume_dir, is_trainable=True)
+            peft_config = model.peft_config["default"]
+            print(f"--> Loaded PEFT adapter weights from {resume_dir!r} (full resume if optimizer state exists there)")
+        else:
             peft_config = generate_peft_config(train_config, kwargs)
             model = get_peft_model(model, peft_config)
         if wandb_run:

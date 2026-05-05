@@ -1,18 +1,22 @@
+import hashlib
 import importlib
+import importlib.util
 from pathlib import Path
 from transformers import DataCollatorForSeq2Seq
 
+
 def load_module_from_py_file(py_file: str) -> object:
     """
-    This method loads a module from a py file which is not in the Python path
+    Load a .py file as a module. Uses a unique module name derived from the resolved path
+    so we never clash with sys.modules['opinionqa_dataset.py'] from an older/wrong load (Colab/Jupyter).
     """
-    module_name = Path(py_file).name
-    loader = importlib.machinery.SourceFileLoader(module_name, py_file)
-    spec = importlib.util.spec_from_loader(module_name, loader)
+    py_path = Path(py_file).resolve()
+    module_name = "_dataset_py_" + hashlib.sha256(str(py_path).encode("utf-8")).hexdigest()
+    spec = importlib.util.spec_from_file_location(module_name, py_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not create import spec for {py_path}")
     module = importlib.util.module_from_spec(spec)
-
-    loader.exec_module(module)
-
+    spec.loader.exec_module(module)
     return module
 
 

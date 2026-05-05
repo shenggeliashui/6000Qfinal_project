@@ -9,7 +9,10 @@ from multiprocessing import Lock
 import datasets
 import pandas as pd
 
-from subpop.train.mcq_option_limit import MAX_MCQ_OPTIONS
+try:
+    from subpop.train.mcq_option_limit import MAX_MCQ_OPTIONS
+except ImportError:  # dynamic load / 未同步 mcq_option_limit.py 时仍可用
+    MAX_MCQ_OPTIONS = 26
 
 
 def _bos_prefix(tokenizer) -> str:

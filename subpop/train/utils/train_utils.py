@@ -181,14 +181,14 @@ def train(
 
     Returns: results dictionary containing average training and validation perplexity and loss
     """
-    # Gradient scaler only for fp16; bf16/fp32 keep scaler=None (save_peft_checkpoint_checkpointing skips it)
-    scaler = None
+    # Use name grad_scaler (not "scaler") to avoid any scoping/keyword quirk with scaler=scaler at save time.
+    grad_scaler = None
     if train_config.use_fp16 and train_config.enable_fsdp:
-        scaler = ShardedGradScaler()
+        grad_scaler = ShardedGradScaler()
     elif train_config.use_fp16 and not train_config.enable_fsdp:
-        scaler = torch.cuda.amp.GradScaler()
-    if scaler_dict is not None and scaler is not None:
-        scaler.load_state_dict(scaler_dict)
+        grad_scaler = torch.cuda.amp.GradScaler()
+    if scaler_dict is not None and grad_scaler is not None:
+        grad_scaler.load_state_dict(scaler_dict)
     if train_config.enable_fsdp:
         world_size = int(os.environ["WORLD_SIZE"])
 
@@ -297,16 +297,16 @@ def train(
                     total_loss += loss.detach().float()
                     if train_config.use_fp16:
                         # if fp16 is enabled, use gradient scaler to handle gradient update
-                        scaler.scale(loss).backward()
+                        grad_scaler.scale(loss).backward()
                         if (step + 1) % gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                             if train_config.gradient_clipping and train_config.gradient_clipping_threshold > 0.0:
-                                scaler.unscale_(optimizer)
+                                grad_scaler.unscale_(optimizer)
                                 if train_config.enable_fsdp:
                                     model.clip_grad_norm_(train_config.gradient_clipping_threshold)
                                 else:
                                     torch.nn.utils.clip_grad_norm_(model.parameters(), train_config.gradient_clipping_threshold)
-                            scaler.step(optimizer)
-                            scaler.update()
+                            grad_scaler.step(optimizer)
+                            grad_scaler.update()
                             optimizer.zero_grad()
                             lr_scheduler.step()
                             pbar.update(1)
@@ -460,7 +460,7 @@ def train(
                 checkpoint_path = checkpoint_path,
                 optimizer = optimizer,
                 scheduler = lr_scheduler,
-                scaler = scaler,
+                scaler = grad_scaler,
                 epoch = epoch + 1,
                 best_val_loss = best_val_loss,
                 train_prep = train_prep,
