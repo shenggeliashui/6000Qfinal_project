@@ -17,11 +17,12 @@
 torch==2.5.1
 torchvision==0.20.1
 torchaudio==2.5.1
-transformers==4.48.2
-# transformers 4.48：`device_map` / `low_cpu_mem_usage` 需 accelerate>=0.26（与 eval_peft_test_hf 里 device_map=auto 一致）；0.24 会触发 ImportError
+# transformers 4.49.x 曾出现 bitsandbytes 集成的已知 bug（frozenset.discard），建议使用更新版本
+transformers>=4.50.0,<5
+# `device_map` / `low_cpu_mem_usage` 需 accelerate>=0.26（与 eval_peft_test_hf 里 device_map=auto 一致）；0.24 会触发 ImportError
 accelerate>=0.26.0,<1.0
 peft==0.6.2
-bitsandbytes>=0.43.0
+bitsandbytes>=0.49.0
 datasets>=2.16.0
 pandas>=2.2.0,<3
 fire

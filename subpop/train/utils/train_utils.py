@@ -29,7 +29,17 @@ from subpop.train.model_checkpointing import (
 )
 from subpop.train.policies import fpSixteen,bfSixteen, get_llama_wrapper
 from subpop.train.utils.memory_utils import MemoryTrace
-from accelerate.utils import is_xpu_available, is_ccl_available
+from accelerate.utils import is_xpu_available
+
+# accelerate renamed/removed is_ccl_available in newer versions.
+try:
+    from accelerate.utils import is_ccl_available  # type: ignore
+except Exception:  # pragma: no cover
+    try:
+        from accelerate.utils import is_xccl_available as is_ccl_available  # type: ignore
+    except Exception:  # pragma: no cover
+        def is_ccl_available() -> bool:  # type: ignore
+            return False
 from subpop.train.utils.flop_utils import FlopMeasure
 from subpop.train.mcq_option_limit import MAX_MCQ_OPTIONS
 
