@@ -164,7 +164,9 @@ def main(**kwargs):
         bnb_config = quant_config.create_bnb_config(train_config.quantization)
 
     # Load the pre-trained model and setup its configuration
-    use_cache = False if train_config.enable_fsdp else None
+    # Some recent versions of huggingface_hub/transformers validate config fields strictly and
+    # require bool for `use_cache`. Passing None can raise StrictDataclassFieldValidationError.
+    use_cache = False if train_config.enable_fsdp else True
     config = AutoConfig.from_pretrained(train_config.model_name)
     if config.model_type == "mllama":
         is_vision = True
