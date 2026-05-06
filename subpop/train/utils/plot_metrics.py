@@ -6,6 +6,14 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 
+
+def _savefig_and_maybe_show(path: str, show: bool) -> None:
+    plt.savefig(path)
+    if show:
+        plt.show()
+    plt.close()
+
+
 def plot_metric(data, metric_name, x_label, y_label, title, colors):
     plt.figure(figsize=(7, 6))
     
@@ -35,7 +43,7 @@ def plot_metrics_by_step(data, metric_name, x_label, y_label, colors):
     plt.tight_layout()
 
     
-def plot_metrics(file_path):
+def plot_metrics(file_path, show_plots: bool = True):
     if not os.path.exists(file_path):
         print(f"File {file_path} does not exist.")
         return
@@ -51,24 +59,38 @@ def plot_metrics(file_path):
     filename_prefix = os.path.basename(file_path).split('.')[0]
 
     plot_metric(data, 'loss', 'Epoch', 'Loss', 'Loss', ['b', 'r'])
-    plt.savefig(os.path.join(directory, f"{filename_prefix}_train_and_validation_loss.png"))
-    plt.close()
+    _savefig_and_maybe_show(
+        os.path.join(directory, f"{filename_prefix}_train_and_validation_loss.png"),
+        show_plots,
+    )
 
     plot_metric(data, 'perplexity', 'Epoch', 'Perplexity', 'Perplexity', ['g', 'm'])
-    plt.savefig(os.path.join(directory, f"{filename_prefix}_train_and_validation_perplexity.png"))
-    plt.close()
+    _savefig_and_maybe_show(
+        os.path.join(directory, f"{filename_prefix}_train_and_validation_perplexity.png"),
+        show_plots,
+    )
 
     plot_metrics_by_step(data, 'loss', 'Step', 'Loss', ['b', 'r'])
-    plt.savefig(os.path.join(directory, f"{filename_prefix}_train_and_validation_loss_by_step.png"))
-    plt.close()
+    _savefig_and_maybe_show(
+        os.path.join(directory, f"{filename_prefix}_train_and_validation_loss_by_step.png"),
+        show_plots,
+    )
 
     plot_metrics_by_step(data, 'perplexity', 'Step', 'Loss', ['g', 'm'])
-    plt.savefig(os.path.join(directory, f"{filename_prefix}_train_and_validation_perplexity_by_step.png"))
-    plt.close()
-    
+    _savefig_and_maybe_show(
+        os.path.join(directory, f"{filename_prefix}_train_and_validation_perplexity_by_step.png"),
+        show_plots,
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Plot metrics from JSON file.')
     parser.add_argument('--file_path', required=True, type=str, help='Path to the metrics JSON file.')
+    parser.add_argument(
+        '--no_show',
+        action='store_true',
+        help='Only save PNG files; do not open/display figures (e.g. batch servers).',
+    )
     args = parser.parse_args()
 
-    plot_metrics(args.file_path)
+    plot_metrics(args.file_path, show_plots=not args.no_show)
