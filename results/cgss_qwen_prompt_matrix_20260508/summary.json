@@ -1,0 +1,80 @@
+[
+  {
+    "model": "Qwen2.5-0.5B",
+    "model_slug": "qwen2p5_0p5b",
+    "prompt": "QA",
+    "baseline_csv": "eval_baseline_0p5B_QA.csv",
+    "output_dir": "outputs/colab_qlora4bit_qwen2.5-0.5b_cgss_QA_ce_20260508_211134",
+    "baseline_kl": 0.7591749453773865,
+    "baseline_wd": 0.20825141707721812,
+    "ft_kl": 0.5231526795488137,
+    "ft_wd": 0.17685824472887013,
+    "delta_kl_ft_minus_baseline": -0.23602226582857277,
+    "delta_wd_ft_minus_baseline": -0.031393172348347986
+  },
+  {
+    "model": "Qwen2.5-0.5B",
+    "model_slug": "qwen2p5_0p5b",
+    "prompt": "BIO",
+    "baseline_csv": "eval_baseline_0p5B_BIO.csv",
+    "output_dir": "outputs/colab_qlora4bit_qwen2.5-0.5b_cgss_BIO_ce_20260508_212043",
+    "baseline_kl": 1.126302854831402,
+    "baseline_wd": 0.22955660616549162,
+    "ft_kl": 0.5197837795202549,
+    "ft_wd": 0.1678160089856157,
+    "delta_kl_ft_minus_baseline": -0.6065190753111471,
+    "delta_wd_ft_minus_baseline": -0.06174059717987593
+  },
+  {
+    "model": "Qwen2.5-0.5B",
+    "model_slug": "qwen2p5_0p5b",
+    "prompt": "PORTRAY",
+    "baseline_csv": "eval_baseline_0p5B_PORTRAY.csv",
+    "output_dir": "outputs/colab_qlora4bit_qwen2.5-0.5b_cgss_PORTRAY_ce_20260508_212954",
+    "baseline_kl": 0.8398091959265562,
+    "baseline_wd": 0.22464558899116058,
+    "ft_kl": 0.5327496217993589,
+    "ft_wd": 0.174061690729398,
+    "delta_kl_ft_minus_baseline": -0.3070595741271973,
+    "delta_wd_ft_minus_baseline": -0.05058389826176257
+  },
+  {
+    "model": "Qwen2.5-7B",
+    "model_slug": "qwen2p5_7b",
+    "prompt": "QA",
+    "baseline_csv": "eval_baseline_7b_QA.csv",
+    "output_dir": "outputs/colab_qlora4bit_qwen2.5-7b_cgss_QA_ce_20260508_174751",
+    "baseline_kl": 0.5023936204039133,
+    "baseline_wd": 0.1644785671494901,
+    "ft_kl": 0.3231423446765313,
+    "ft_wd": 0.1308750624087854,
+    "delta_kl_ft_minus_baseline": -0.17925127572738203,
+    "delta_wd_ft_minus_baseline": -0.0336035047407047
+  },
+  {
+    "model": "Qwen2.5-7B",
+    "model_slug": "qwen2p5_7b",
+    "prompt": "BIO",
+    "baseline_csv": "eval_baseline_7B_BIO.csv",
+    "output_dir": "outputs/colab_qlora4bit_qwen2.5-7b_cgss_BIO_ce_20260508_204109",
+    "baseline_kl": 0.5107151661927883,
+    "baseline_wd": 0.1785537378504299,
+    "ft_kl": 0.34894828859430094,
+    "ft_wd": 0.13650128388096794,
+    "delta_kl_ft_minus_baseline": -0.1617668775984874,
+    "delta_wd_ft_minus_baseline": -0.04205245396946197
+  },
+  {
+    "model": "Qwen2.5-7B",
+    "model_slug": "qwen2p5_7b",
+    "prompt": "PORTRAY",
+    "baseline_csv": "eval_baseline_7B_PORTRAY.csv",
+    "output_dir": "outputs/colab_qlora4bit_qwen2.5-7b_cgss_PORTRAY_ce_20260508_205234",
+    "baseline_kl": 0.48455603558283583,
+    "baseline_wd": 0.16690786697973425,
+    "ft_kl": 0.34059622184588356,
+    "ft_wd": 0.1321786040565572,
+    "delta_kl_ft_minus_baseline": -0.14395981373695227,
+    "delta_wd_ft_minus_baseline": -0.034729262923177046
+  }
+]
